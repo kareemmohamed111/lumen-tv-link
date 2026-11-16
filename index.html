@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07090d">
+<meta name="referrer" content="no-referrer">
+<title>Lumen TV Sign-in</title>
+<style>
+  /* Phone companion for Lumen TV. Single column, thumb-reachable action at the bottom of the form. */
+  :root {
+    --bg: #07090d; --surface: #141821; --field: #1c212c; --line: rgba(214, 226, 255, .1);
+    --text: #f3f5f9; --text-2: rgba(222, 230, 245, .7); --text-3: rgba(222, 230, 245, .45);
+    --accent: #5b8cff; --ok: #3ddc97; --err: #ff6b78; --warn: #ffb547;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  html, body { background: var(--bg); color: var(--text); font: 16px/1.45 var(--sans); -webkit-font-smoothing: antialiased; }
+  body { min-height: 100vh; background: radial-gradient(120% 60% at 0% 0%, rgba(70, 120, 255, .22), transparent 60%), var(--bg); }
+  .wrap { max-width: 460px; margin: 0 auto; padding: max(28px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; letter-spacing: -.3px; }
+  .mark { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #9ec5ff, #3a6dff); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px rgba(58, 109, 255, .35); }
+  .mark svg { width: 34px; height: 34px; }
+  h1 { margin-top: 28px; font-size: 30px; line-height: 1.1; letter-spacing: -.8px; font-weight: 800; text-wrap: balance; }
+  .lead { margin-top: 8px; color: var(--text-2); }
+  .card { margin-top: 24px; padding: 18px; border-radius: 22px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+  .seg { display: flex; padding: 4px; border-radius: 14px; background: rgba(255, 255, 255, .06); }
+  .seg button { flex: 1; height: 42px; border: 0; border-radius: 11px; background: transparent; color: var(--text-3); font: 600 15px var(--sans); }
+  .seg button[aria-pressed="true"] { background: rgba(255, 255, 255, .14); color: var(--text); }
+  label { display: block; margin-top: 14px; }
+  label > span { display: block; font-size: 12px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+  .inp { position: relative; }
+  input { width: 100%; height: 52px; padding: 0 14px; border-radius: 14px; border: 1.5px solid transparent; background: var(--field); color: var(--text); font: 500 17px var(--sans); outline: none; }
+  input:focus { border-color: var(--accent); }
+  input::placeholder { color: rgba(222, 230, 245, .28); }
+  .eye { position: absolute; right: 6px; top: 6px; height: 40px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, .08); color: var(--text-2); font: 600 13px var(--sans); }
+  .hint { margin-top: 8px; font-size: 13px; color: var(--text-3); }
+  .send { margin-top: 20px; width: 100%; height: 56px; border: 0; border-radius: 16px; background: var(--accent); color: #fff; font: 700 17px var(--sans); display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .send:disabled { opacity: .6; }
+  .send:focus-visible, .seg button:focus-visible, .eye:focus-visible, .link:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  .status { margin-top: 16px; display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 16px; background: rgba(255, 255, 255, .05); font-size: 15px; color: var(--text-2); }
+  .status i { flex: none; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--accent); }
+  .status.busy i { background: var(--warn); animation: blink 1s infinite; }
+  .status.error { background: rgba(255, 107, 120, .1); color: #ffc2c8; } .status.error i { background: var(--err); }
+  @keyframes blink { 50% { opacity: .3; } }
+  .spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .done { margin-top: 48px; text-align: center; }
+  .tick { width: 84px; height: 84px; margin: 0 auto; border-radius: 50%; background: rgba(61, 220, 151, .14); display: flex; align-items: center; justify-content: center; }
+  .tick svg { width: 44px; height: 44px; color: var(--ok); }
+  .done h1 { margin-top: 22px; }
+  .done p { margin-top: 10px; color: var(--text-2); }
+  .link { margin-top: 26px; background: none; border: 0; color: var(--accent); font: 600 16px var(--sans); }
+  .nosess { margin-top: 40px; padding: 22px; border-radius: 20px; background: var(--surface); color: var(--text-2); box-shadow: inset 0 0 0 1px var(--line); }
+  .nosess b { color: var(--text); display: block; font-size: 18px; margin-bottom: 6px; }
+  .foot { margin-top: 26px; font-size: 13px; color: var(--text-3); text-align: center; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="brand"><span class="mark"><svg viewBox="0 0 40 40"><path d="M15.5 12.5v15a.9.9 0 0 0 1.4.75l11.2-7.5a.9.9 0 0 0 0-1.5l-11.2-7.5a.9.9 0 0 0-1.4.75z" fill="#fff"/></svg></span>Lumen TV</div>
+
+  <section id="nosess" class="nosess" hidden>
+    <b>Scan the code on your TV</b>
+    Open Lumen TV on your Samsung TV. The sign-in screen shows a QR code. Scan it with your phone camera to open this page.
+  </section>
+
+  <section id="formView" hidden>
+    <h1>Sign in to your TV</h1>
+    <p class="lead">Enter the details from your IPTV provider. Your TV signs in as soon as you send them.</p>
+    <form class="card" id="form" novalidate>
+      <div class="seg" role="group" aria-label="Login type">
+        <button type="button" id="tab-xtream" aria-pressed="true">Xtream Codes</button>
+        <button type="button" id="tab-m3u" aria-pressed="false">M3U Link</button>
+      </div>
+      <div id="xtream">
+        <label for="server"><span>Server address</span></label>
+        <input id="server" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="http://example.com:8080">
+        <p class="hint">Pasted a full link with username and password? It fills in the rest for you.</p>
+        <label for="user"><span>Username</span></label>
+        <input id="user" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Username">
+        <label for="pass"><span>Password</span></label>
+        <div class="inp"><input id="pass" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" placeholder="Password"><button type="button" class="eye" id="eye">Show</button></div>
+      </div>
+      <div id="m3u" hidden>
+        <label for="url"><span>Playlist link</span></label>
+        <input id="url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="http://example.com/get.php?username=…">
+      </div>
+      <button class="send" id="send" type="submit"><span>Send to TV</span></button>
+      <div class="status" id="status" hidden role="status"><i></i><span></span></div>
+    </form>
+    <p class="foot">Encrypted on this phone. Only your TV can read it.</p>
+  </section>
+
+  <section id="doneView" class="done" hidden>
+    <div class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <h1>Signed in on your TV</h1>
+    <p id="doneText">Your channels and films are loading on the TV now. You can put your phone away.</p>
+    <button class="link" id="again" type="button">Sign in with different details</button>
+  </section>
+</main>
+<script>
+(function () {
+  'use strict';
+  var RELAY = 'https://ntfy.sh/';
+  var $ = function (id) { return document.getElementById(id); };
+  var frag = location.hash.slice(1).split('.');
+  var topic = frag[0], keyB64 = frag[1];
+  /* Remove the key from the address bar and history */
+  try { history.replaceState(null, '', location.pathname); } catch (e) { }
+
+  if (!/^lumen-[0-9a-f]{24}$/.test(topic || '') || !keyB64 || !(window.crypto && crypto.subtle)) { $('nosess').hidden = false; return; }
+  $('formView').hidden = false;
+
+  function unb64u(t) { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; var r = atob(t), o = new Uint8Array(r.length); for (var i = 0; i < r.length; i++) o[i] = r.charCodeAt(i); return o; }
+  function b64u(b) { var t = ''; for (var i = 0; i < b.length; i++) t += String.fromCharCode(b[i]); return btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  var keyP = crypto.subtle.importKey('raw', unb64u(keyB64), 'AES-GCM', false, ['encrypt', 'decrypt']);
+  function encrypt(obj) {
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return keyP.then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(JSON.stringify(obj))); })
+      .then(function (ct) { return b64u(iv) + '.' + b64u(new Uint8Array(ct)); });
+  }
+  function decrypt(msg) {
+    var p = String(msg).split('.');
+    return keyP.then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64u(p[0]) }, k, unb64u(p[1])); })
+      .then(function (pt) { return JSON.parse(new TextDecoder().decode(pt)); });
+  }
+
+  /* ---- form ---- */
+  var mode = 'xtream';
+  function setMode(m) {
+    mode = m;
+    $('tab-xtream').setAttribute('aria-pressed', m === 'xtream');
+    $('tab-m3u').setAttribute('aria-pressed', m === 'm3u');
+    $('xtream').hidden = m !== 'xtream'; $('m3u').hidden = m !== 'm3u';
+  }
+  $('tab-xtream').onclick = function () { setMode('xtream'); };
+  $('tab-m3u').onclick = function () { setMode('m3u'); };
+  $('eye').onclick = function () { var p = $('pass'); p.type = p.type === 'password' ? 'text' : 'password'; this.textContent = p.type === 'password' ? 'Show' : 'Hide'; };
+  /* A full get.php / player_api link pasted into the server box fills all three fields */
+  $('server').addEventListener('input', function () {
+    try {
+      var u = new URL(this.value.trim());
+      var user = u.searchParams.get('username'), pass = u.searchParams.get('password');
+      if (user && pass) { this.value = u.origin; $('user').value = user; $('pass').value = pass; }
+    } catch (e) { }
+  });
+
+  function status(kind, text) {
+    var s = $('status');
+    s.hidden = !kind; s.className = 'status ' + (kind || '');
+    s.querySelector('span').textContent = text || '';
+  }
+  function busy(on, label) {
+    $('send').disabled = on;
+    $('send').innerHTML = on ? '<span class="spin"></span><span>' + label + '</span>' : '<span>Send to TV</span>';
+  }
+
+  var waitT = 0, polling = false, since = 0;
+  $('form').onsubmit = function (e) {
+    e.preventDefault();
+    var creds;
+    if (mode === 'xtream') {
+      creds = { type: 'xtream', server: $('server').value.trim(), user: $('user').value.trim(), pass: $('pass').value.trim() };
+      if (!creds.server || !creds.user || !creds.pass) return status('error', 'Fill in the server address, username and password.');
+    } else {
+      creds = { type: 'm3u', url: $('url').value.trim() };
+      if (!creds.url) return status('error', 'Paste your playlist link.');
+    }
+    busy(true, 'Sending…');
+    status('busy', 'Sending to your TV…');
+    since = Math.floor(Date.now() / 1000) - 2;
+    encrypt(creds).then(function (body) {
+      return fetch(RELAY + topic + '-tv', { method: 'POST', body: body });
+    }).then(function (r) {
+      if (!r.ok) throw new Error('relay');
+      busy(true, 'Waiting for TV…');
+      status('busy', 'Sent. Waiting for your TV to sign in…');
+      clearTimeout(waitT);
+      waitT = setTimeout(function () {
+        busy(false);
+        status('error', 'Your TV didn\'t answer. Make sure Lumen TV is open on the sign-in screen, then send again.');
+      }, 25000);
+      if (!polling) poll();
+    }).catch(function () {
+      busy(false);
+      status('error', 'Couldn\'t send. Check your phone\'s internet connection and try again.');
+    });
+  };
+
+  /* ---- replies from the TV ---- */
+  var seen = {};
+  function poll() {
+    polling = true;
+    fetch(RELAY + topic + '-ph/json?poll=1&since=' + since).then(function (r) { return r.text(); }).then(function (text) {
+      var jobs = [];
+      text.split('\n').forEach(function (line) {
+        if (!line.trim()) return;
+        var m; try { m = JSON.parse(line); } catch (e) { return; }
+        if (m.event !== 'message' || seen[m.id]) return;
+        seen[m.id] = 1; since = m.id;
+        jobs.push(decrypt(m.message).then(handle).catch(function () { }));
+      });
+      return Promise.all(jobs);
+    }).catch(function () { }).then(function () { setTimeout(poll, 1500); });
+  }
+  function handle(msg) {
+    if (msg.state === 'checking') { clearTimeout(waitT); waitT = setTimeout(function () { busy(false); status('error', 'The TV is taking too long. Check the TV screen.'); }, 60000); busy(true, 'Signing in…'); status('busy', 'Your TV received the details and is signing in…'); }
+    else if (msg.state === 'ok') {
+      clearTimeout(waitT); busy(false); status(null);
+      $('formView').hidden = true; $('doneView').hidden = false;
+      if (msg.name) $('doneText').textContent = 'Signed in as ' + msg.name + '. Your channels and films are loading on the TV now. You can put your phone away.';
+    }
+    else if (msg.state === 'error') { clearTimeout(waitT); busy(false); status('error', (msg.msg || 'Sign in failed.') + ' Fix it and send again.'); }
+  }
+  $('again').onclick = function () { $('doneView').hidden = true; $('formView').hidden = false; };
+})();
+</script>
+</body>
+</html>
