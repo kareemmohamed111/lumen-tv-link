@@ -159,7 +159,7 @@
     $('send').innerHTML = on ? '<span class="spin"></span><span>' + label + '</span>' : '<span>Send to TV</span>';
   }
 
-  var waitT = 0, polling = false, since = 0;
+  var waitT = 0, listening = false, since = Math.floor(Date.now() / 1000) - 5;
   $('form').onsubmit = function (e) {
     e.preventDefault();
     var creds;
@@ -172,10 +172,11 @@
     }
     busy(true, 'Sending…');
     status('busy', 'Sending to your TV…');
-    since = Math.floor(Date.now() / 1000) - 2;
+    if (!listening) listen();
     encrypt(creds).then(function (body) {
       return fetch(RELAY + topic + '-tv', { method: 'POST', body: body });
     }).then(function (r) {
+      if (r.status === 429) throw new Error('busy');
       if (!r.ok) throw new Error('relay');
       busy(true, 'Waiting for TV…');
       status('busy', 'Sent. Waiting for your TV to sign in…');
@@ -184,29 +185,34 @@
         busy(false);
         status('error', 'Your TV didn\'t answer. Make sure Lumen TV is open on the sign-in screen, then send again.');
       }, 25000);
-      if (!polling) poll();
-    }).catch(function () {
+    }).catch(function (e) {
       busy(false);
-      status('error', 'Couldn\'t send. Check your phone\'s internet connection and try again.');
+      status('error', e && e.message === 'busy'
+        ? 'The sign-in relay is busy right now. Wait one minute, then tap Send to TV again.'
+        : 'Couldn\'t send. Check your phone\'s internet connection and try again.');
     });
   };
 
-  /* ---- replies from the TV ---- */
+  /* ---- replies from the TV: one push connection, no polling (the relay rate-limits) ---- */
   var seen = {};
-  function poll() {
-    polling = true;
-    fetch(RELAY + topic + '-ph/json?poll=1&since=' + since).then(function (r) { return r.text(); }).then(function (text) {
-      var jobs = [];
-      text.split('\n').forEach(function (line) {
-        if (!line.trim()) return;
-        var m; try { m = JSON.parse(line); } catch (e) { return; }
-        if (m.event !== 'message' || seen[m.id]) return;
-        seen[m.id] = 1; since = m.id;
-        jobs.push(decrypt(m.message).then(handle).catch(function () { }));
-      });
-      return Promise.all(jobs);
-    }).catch(function () { }).then(function () { setTimeout(poll, 1500); });
+  function onMsg(m) {
+    if (!m || m.event !== 'message' || seen[m.id]) return;
+    seen[m.id] = 1; since = m.id;
+    decrypt(m.message).then(handle).catch(function () { });
   }
+  function listen() {
+    listening = true;
+    if (window.EventSource) {
+      var es = new EventSource(RELAY + topic + '-ph/sse?since=' + since);
+      es.onmessage = function (ev) { try { onMsg(JSON.parse(ev.data)); } catch (e) { } };
+      es.onerror = function () { if (es.readyState === 2) { es.close(); setTimeout(listen, 20000); } };
+    } else {
+      fetch(RELAY + topic + '-ph/json?poll=1&since=' + since).then(function (r) { return r.text(); }).then(function (text) {
+        text.split('\n').forEach(function (line) { try { onMsg(JSON.parse(line)); } catch (e) { } });
+      }).catch(function () { }).then(function () { setTimeout(listen, 6000); });
+    }
+  }
+  listen();
   function handle(msg) {
     if (msg.state === 'checking') { clearTimeout(waitT); waitT = setTimeout(function () { busy(false); status('error', 'The TV is taking too long. Check the TV screen.'); }, 60000); busy(true, 'Signing in…'); status('busy', 'Your TV received the details and is signing in…'); }
     else if (msg.state === 'ok') {
